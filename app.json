@@ -1,0 +1,75 @@
+{
+  "configVersion": "v3",
+  "app": {
+    "appId": 24779,
+    "appName": "zepp2hass",
+    "appType": "app",
+    "version": {
+      "code": 2,
+      "name": "1.1.0"
+    },
+    "icon": "icon.png",
+    "vender": "zepp2hass",
+    "description": "Sync Zepp health data to Home Assistant"
+  },
+  "permissions": [
+    "device:os.alarm",
+    "device:os.bg_service",
+    "device:os.local_storage",
+    "data:os.device.info",
+    "data:user.hd.heart_rate",
+    "data:user.hd.spo2",
+    "data:user.hd.stress",
+    "data:user.hd.body_temp",
+    "data:user.hd.sleep",
+    "data:user.hd.pai",
+    "data:user.hd.step",
+    "data:user.hd.calorie",
+    "data:user.hd.distance",
+    "data:user.hd.fat_burning",
+    "data:user.hd.stand",
+    "data:user.hd.workout",
+    "data:user.info"
+  ],
+  "runtime": {
+    "apiVersion": {
+      "compatible": "3.0.0",
+      "target": "3.0.0",
+      "minVersion": "3.0"
+    }
+  },
+  "targets": {
+    "default": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/index"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        },
+        "app-service": {
+          "services": [
+            "app-service/sync"
+          ]
+        }
+      },
+      "platforms": [
+        {
+          "st": "r",
+          "dw": 480
+        }
+      ]
+    }
+  },
+  "i18n": {
+    "en-US": {
+      "appName": "zepp2hass"
+    }
+  },
+  "defaultLanguage": "en-US"
+}
