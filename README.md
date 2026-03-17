@@ -66,7 +66,7 @@ This is the easiest method and works on all platforms.
 
 3. **Clone and build** the project:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/zepp2hass-watch.git
+   git clone https://github.com/MrCodeEU/zepp2hass-watch.git
    cd zepp2hass-watch
    npm install
    npx zeus build
