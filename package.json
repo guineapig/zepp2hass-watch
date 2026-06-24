@@ -1,6 +1,6 @@
 {
   "name": "zepp2hass",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Sync Zepp health data to Home Assistant",
   "main": "app.js",
   "scripts": {
@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@zeppos/device-types": "^3.0.0"
+    "@zeppos/device-types": "^4.2.0"
   }
 }
