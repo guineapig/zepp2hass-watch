@@ -2,7 +2,6 @@ import '../shared/device-polyfill'
 import { MessageBuilder } from '../shared/message'
 import { getPackageInfo } from '@zos/app'
 import * as ble from '@zos/ble'
-import { set as setAlarm, cancel as cancelAlarm } from '@zos/alarm'
 import { localStorage } from '@zos/storage'
 import {
   HeartRate,
@@ -23,6 +22,13 @@ import {
 } from '@zos/sensor'
 import { getDeviceInfo } from '@zos/device'
 import { getProfile } from '@zos/user'
+
+const DEFAULT_INTERVAL_SEC = 5 * 60
+const REQUEST_TIMEOUT_MS = 15000
+
+let messageBuilder = null
+let syncTimer = null
+let syncInFlight = false
 
 function safeCall(fn) {
   try {
@@ -221,73 +227,114 @@ function collectSensorData() {
   return payload
 }
 
-function scheduleNextSync(delaySec) {
-  const prevId = localStorage.getItem('alarm_id')
-  if (prevId) {
-    try { cancelAlarm(prevId) } catch (e) {}
-  }
+function getMessageBuilder() {
+  if (messageBuilder) return messageBuilder
 
-  const id = setAlarm({
-    url: 'app-service/sync',
-    delay: delaySec,
-    store: true,
+  const { appId } = getPackageInfo()
+  messageBuilder = new MessageBuilder({
+    appId,
+    appDevicePort: 20,
+    appSidePort: 0,
+    ble,
   })
+  messageBuilder.connect()
+  return messageBuilder
+}
 
-  if (id !== 0) {
-    localStorage.setItem('alarm_id', id)
+function clearSyncTimer() {
+  if (!syncTimer) return
+  try { clearTimeout(syncTimer) } catch (e) {}
+  syncTimer = null
+}
+
+function clampIntervalSec(delaySec) {
+  const sec = parseInt(delaySec, 10)
+  if (!sec || sec <= 0) return DEFAULT_INTERVAL_SEC
+  return sec
+}
+
+function scheduleNextSync(delaySec) {
+  const intervalSec = clampIntervalSec(delaySec)
+  clearSyncTimer()
+
+  localStorage.setItem('sync_service_status', 'waiting')
+  localStorage.setItem('next_sync_delay_sec', String(intervalSec))
+
+  syncTimer = setTimeout(() => {
+    runSync('timer')
+  }, intervalSec * 1000)
+}
+
+function runSync(reason) {
+  if (syncInFlight) {
+    localStorage.setItem('sync_service_status', 'busy')
+    return
   }
+
+  syncInFlight = true
+  localStorage.setItem('sync_service_status', 'syncing')
+  localStorage.setItem('last_sync_reason', reason || 'unknown')
+
+  const payload = collectSensorData()
+
+  getMessageBuilder()
+    .request(
+      {
+        method: 'SYNC_DATA',
+        params: payload,
+      },
+      { timeout: REQUEST_TIMEOUT_MS }
+    )
+    .then((data) => {
+      let intervalSec = DEFAULT_INTERVAL_SEC
+
+      if (data && data.interval && data.interval > 0) {
+        intervalSec = data.interval * 60
+      }
+
+      if (data && data.ok) {
+        localStorage.setItem('last_sync', new Date().toISOString())
+        localStorage.setItem('last_sync_status', 'ok')
+      } else {
+        const err = (data && data.error) || 'unknown'
+        localStorage.setItem('last_sync_status', 'error: ' + err)
+      }
+
+      syncInFlight = false
+      scheduleNextSync(intervalSec)
+    })
+    .catch((err) => {
+      const msg = err && err.message ? err.message : 'timeout'
+      localStorage.setItem('last_sync_status', 'error: ' + msg)
+      syncInFlight = false
+      scheduleNextSync(DEFAULT_INTERVAL_SEC)
+    })
 }
 
 AppService({
   onInit(e) {
-    console.log('zepp2hass sync service started')
+    console.log('zepp2hass ZeppOS 4 bg service started')
+    localStorage.setItem('sync_service_status', 'started')
+    runSync((e && e.param) || 'service_init')
+  },
 
-    const { appId } = getPackageInfo()
-    const messageBuilder = new MessageBuilder({
-      appId,
-      appDevicePort: 20,
-      appSidePort: 0,
-      ble,
-    })
-    messageBuilder.connect()
+  onRun(e) {
+    // ZeppOS 4 bg service can be woken by start({ file, param }) without
+    // relying on device:os.alarm. A manual trigger should sync immediately.
+    if (e && e.param === 'manual') {
+      clearSyncTimer()
+      runSync('manual')
+      return
+    }
 
-    const payload = collectSensorData()
-
-    messageBuilder
-      .request(
-        {
-          method: 'SYNC_DATA',
-          params: payload,
-        },
-        { timeout: 15000 }
-      )
-      .then((data) => {
-        let intervalSec = 5 * 60
-
-        if (data && data.interval && data.interval > 0) {
-          intervalSec = data.interval * 60
-        }
-
-        if (data && data.ok) {
-          localStorage.setItem('last_sync', new Date().toISOString())
-          localStorage.setItem('last_sync_status', 'ok')
-        } else {
-          const err = (data && data.error) || 'unknown'
-          localStorage.setItem('last_sync_status', 'error: ' + err)
-        }
-
-        scheduleNextSync(intervalSec)
-        messageBuilder.disConnect()
-      })
-      .catch((err) => {
-        const msg = err && err.message ? err.message : 'timeout'
-        localStorage.setItem('last_sync_status', 'error: ' + msg)
-        scheduleNextSync(5 * 60)
-        messageBuilder.disConnect()
-      })
+    if (!syncTimer && !syncInFlight) {
+      runSync((e && e.param) || 'service_run')
+    }
   },
 
   onDestroy() {
-    console.log('zepp2hass sync service stopped')
+    clearSyncTimer()
+    localStorage.setItem('sync_service_status', 'stopped')
+    console.log('zepp2hass ZeppOS 4 bg service stopped')
   },
 })
