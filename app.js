@@ -1,25 +1,24 @@
 import './shared/device-polyfill'
-import { set as setAlarm } from '@zos/alarm'
-import { localStorage } from '@zos/storage'
+import { start } from '@zos/app-service'
 
 App({
   globalData: {},
+
   onCreate(options) {
     console.log('zepp2hass app created')
 
-    // Schedule first sync if no alarm is set yet
-    const existingAlarm = localStorage.getItem('alarm_id')
-    if (!existingAlarm) {
-      const id = setAlarm({
-        url: 'app-service/sync',
-        delay: 10,
-        store: true,
+    // ZeppOS 4 bg:service: start the service directly instead of using
+    // device:os.alarm to relaunch app-service/sync.
+    try {
+      start({
+        file: 'app-service/sync',
+        param: 'app_launch',
       })
-      if (id !== 0) {
-        localStorage.setItem('alarm_id', id)
-      }
+    } catch (e) {
+      console.log('failed to start zepp2hass sync service')
     }
   },
+
   onDestroy(options) {
     console.log('zepp2hass app destroyed')
   },
