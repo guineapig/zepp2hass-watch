@@ -5,16 +5,15 @@
     "appName": "zepp2hass",
     "appType": "app",
     "version": {
-      "code": 2,
-      "name": "1.1.0"
+      "code": 3,
+      "name": "1.2.0"
     },
     "icon": "icon.png",
     "vender": "zepp2hass",
     "description": "Sync Zepp health data to Home Assistant"
   },
   "permissions": [
-    "device:os.alarm",
-    "device:os.bg_service",
+    "bg:service",
     "device:os.local_storage",
     "data:os.device.info",
     "data:user.hd.heart_rate",
@@ -33,9 +32,9 @@
   ],
   "runtime": {
     "apiVersion": {
-      "compatible": "3.0.0",
-      "target": "3.0.0",
-      "minVersion": "3.0"
+      "compatible": "4.2.0",
+      "target": "4.2.0",
+      "minVersion": "4.2"
     }
   },
   "targets": {
