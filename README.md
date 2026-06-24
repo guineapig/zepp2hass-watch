@@ -1,12 +1,12 @@
 # zepp2hass Watch App
 
-An alternative ZeppOS 3.0 watch app for syncing health data from Amazfit watches to [Home Assistant](https://www.home-assistant.io/) via the [zepp2hass](https://github.com/davidepalleschi/zepp2hass) custom component by [Davide Palleschi](https://github.com/davidepalleschi).
+An alternative ZeppOS 4.2 watch app for syncing health data from Amazfit watches to [Home Assistant](https://www.home-assistant.io/) via the [zepp2hass](https://github.com/davidepalleschi/zepp2hass) custom component by [Davide Palleschi](https://github.com/davidepalleschi).
 
 > **Note**: This is an alternative watch app implementation, not a replacement for the original. The original [zepp2hass project](https://github.com/davidepalleschi/zepp2hass) includes both a Home Assistant custom component and its own watch app. This project provides only a watch app that works with the same Home Assistant component. It was created because the original watch app did not work on certain devices (Amazfit Balance 2).
 
 ## Features
 
-- Background sync via alarm-based scheduling (no screen wake)
+- ZeppOS 4 `bg:service` background sync without alarm-based relaunching
 - Configurable sync interval (1, 2, 5, 10, 15, or 30 minutes)
 - Manual sync from the watch UI
 - Settings page in the Zepp app for webhook URL and interval
@@ -39,7 +39,7 @@ An alternative ZeppOS 3.0 watch app for syncing health data from Amazfit watches
 
 - **Home Assistant** with the [zepp2hass custom component](https://github.com/davidepalleschi/zepp2hass) installed
 - **Zepp app** on your phone, logged in and paired with your watch
-- An Amazfit watch running **ZeppOS 3.0+** (tested on Amazfit Balance 2)
+- An Amazfit watch running **ZeppOS 4.2+**
 
 ## Setting Up Home Assistant
 
@@ -66,7 +66,7 @@ This is the easiest method and works on all platforms.
 
 3. **Clone and build** the project:
    ```bash
-   git clone https://github.com/MrCodeEU/zepp2hass-watch.git
+   git clone https://github.com/guineapig/zepp2hass-watch.git
    cd zepp2hass-watch
    npm install
    npx zeus build
@@ -98,7 +98,7 @@ After installing the watch app:
 4. Enter your **Home Assistant webhook URL** (the one you copied during HA setup).
 5. Choose your preferred **sync interval**.
 
-The app will start syncing automatically in the background. Open the watch app to see the last sync time and status, or tap "Sync Now" for a manual sync.
+The app starts the ZeppOS 4 background service when the watch app is launched and then keeps syncing from that service. Open the watch app to see the last sync time and status, or tap "Sync Now" for a manual sync.
 
 ## Architecture
 
@@ -107,7 +107,7 @@ Watch (ZeppOS)                    Phone (Zepp App)              Home Assistant
 ┌─────────────────┐              ┌─────────────────┐           ┌──────────────┐
 │  app-service/   │  BLE/Message │  app-side/      │   HTTP    │  zepp2hass   │
 │  sync.js        │─────────────>│  index.js       │──────────>│  component   │
-│  (background)   │  Builder     │  (side service) │   POST    │  (webhook)   │
+│  (bg:service)   │  Builder     │  (side service) │   POST    │  (webhook)   │
 │                 │              │                 │           │              │
 │  Sensors:       │              │  Settings:      │           │  Creates     │
 │  HR, SpO2,      │              │  webhook_url    │           │  HA sensors  │
@@ -115,12 +115,12 @@ Watch (ZeppOS)                    Phone (Zepp App)              Home Assistant
 │  Battery, etc.  │              │                 │           │  payload     │
 └─────────────────┘              └─────────────────┘           └──────────────┘
         │
-        │ Alarm API
-        │ (schedules next run)
+        │ ZeppOS 4 bg:service
+        │ timer loop inside app-service
         └──> repeats every N minutes
 ```
 
-- **`app-service/sync.js`** — Background service that collects sensor data and sends it via BLE MessageBuilder. Schedules the next sync via the Alarm API.
+- **`app-service/sync.js`** — ZeppOS 4 background service that collects sensor data and sends it via BLE MessageBuilder. It keeps the repeat loop inside the service and does not use the Alarm API.
 - **`app-side/index.js`** — Phone-side service that receives data via BLE and POSTs it to the Home Assistant webhook.
 - **`setting/index.js`** — Settings UI in the Zepp phone app for configuring the webhook URL and sync interval.
 - **`page/index.js`** — Watch UI showing sync status with a manual "Sync Now" button.
@@ -141,7 +141,7 @@ The review process typically takes a few days. The main consideration is that th
 
 - **[zepp2hass](https://github.com/davidepalleschi/zepp2hass)** by [Davide Palleschi](https://github.com/davidepalleschi) — the Home Assistant custom component that this watch app sends data to. Without this component, this watch app has nothing to talk to.
 - **[ZeppOS Samples](https://github.com/nicklai0720/nicklai0720-ZeppOS_samples)** — the MessageBuilder BLE communication library used in this project is from the official ZeppOS sample code.
-- Built with [ZeppOS 3.0 SDK](https://docs.zepp.com/)
+- Built with ZeppOS 4.2 SDK configuration.
 
 ## License
 
